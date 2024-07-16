@@ -4,9 +4,11 @@
 
 WifiHandler wifi("your ssid", "password");
 
-void setup() {
+void setup()
+{
   wifi.init();
 }
 
-void loop() {
+void loop()
+{
 }
