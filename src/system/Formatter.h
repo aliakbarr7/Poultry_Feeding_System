@@ -1,10 +1,11 @@
-#pragma once
+// #pragma once
 
-#include <stdint.h>
-#include <string>
+// #include <stdint.h>
+// #include <string>
 
-class Formatter {
+// class Formatter
+// {
 
-public:
-  static std::string formatTime(uint32_t unixtime, int timezone = 8);
-};
+// public:
+//     static std::string formatTime(uint32_t unixtime, int timezone = 8);
+// };
