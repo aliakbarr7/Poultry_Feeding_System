@@ -1,23 +1,58 @@
+#include <dev_config.h>
 #include "network_WiFi.h"
 
-network_WiFi::network_WiFi(const char *ssid, const char *pass) : _wifiHandler(ssid, pass) {}
+
+network_WiFi::network_WiFi()
+{
+    wifiWasConnected = false;
+}
 
 bool network_WiFi::init()
 {
-    _wifiHandler.init();
+    // Coba untuk terhubung ke jaringan WiFi yang ada
+    WiFi.begin();
+    if (WiFi.waitForConnectResult() == WL_CONNECTED)
+    {
+        wifiWasConnected = true;
+    }
+    else
+    {
+        wifiWasConnected = false;
+    }
     return WiFi.status() == WL_CONNECTED;
 }
 
 bool network_WiFi::checkStatus()
 {
-    if (WiFi.status() != WL_CONNECTED)
+    // Memeriksa apakah WiFi masih terhubung atau terputus
+    if (WiFi.status() != WL_CONNECTED && wifiWasConnected)
     {
-        Serial.println("WiFi not connected!");
-        return false;
+        wifiWasConnected = false;
+        WiFi.reconnect(); // Mencoba menghubungkan kembali ke WiFi
+    }
+
+    // Jika WiFi terdeteksi kembali setelah terputus
+    if (WiFi.status() == WL_CONNECTED && !wifiWasConnected)
+    {
+        wifiWasConnected = true;
+    }
+
+    return wifiWasConnected;
+
+}
+
+bool network_WiFi::WiFiConfig()
+{
+    wifiManager.startConfigPortal(AP_WIFI, AP_PASSWORD);
+
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        wifiWasConnected = true;
+        return true;
     }
     else
     {
-        Serial.println("WiFi Still connected!");
-        return true;
+        wifiWasConnected = false;
+        return false;
     }
 }

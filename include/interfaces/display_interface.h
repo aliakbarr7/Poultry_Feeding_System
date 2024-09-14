@@ -16,5 +16,6 @@ class display_interface
         virtual bool setDateTime(std::string dateTimeStr) = 0;
         virtual bool setWifiConn(bool connected) = 0;
         virtual bool showMessage(std::string notifMessage1, std::string notifMessage2) = 0;
+        virtual bool setAPConfig() = 0;
         virtual bool update() = 0;
 };

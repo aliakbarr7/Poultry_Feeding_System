@@ -34,7 +34,7 @@ String time_DS3231::getCurrentTime()
     // Mendapatkan hari dalam seminggu (0 = Minggu, 1 = Senin, dst.)
     uint8_t hari = _rtc.now().dayOfTheWeek();
 
-    return String(_rtc.now().day(), DEC) + "/" + String(_rtc.now().month(), DEC) + "/" + String(_rtc.now().year(), DEC) + " " + String(_rtc.now().hour(), DEC) + ":" + String(_rtc.now().minute(), DEC);
+    return String(_rtc.now().day(), DEC) + "/" + String(_rtc.now().month(), DEC) + "/" + String(_rtc.now().year(), DEC) + "-" + String(_rtc.now().hour(), DEC) + ":" + String(_rtc.now().minute(), DEC);
 }
 
 uint32_t time_DS3231::getHour()

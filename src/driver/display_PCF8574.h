@@ -21,6 +21,7 @@ public:
     bool setDateTime(std::string dateTimeStr);
     bool setWifiConn(bool connected);
     bool showMessage(std::string notifMessage1, std::string notifMessage2);
+    bool setAPConfig();
     bool update();
 
 private:
@@ -39,6 +40,7 @@ private:
 
     int currentScreen;
     bool calibrationActive;
+    bool APConfigActive;
     bool messageActive;
     unsigned long lastRefreshTime;
     unsigned long messageStartTime;
@@ -50,6 +52,8 @@ private:
     void displayScreen2();
     void displayScreen3();
     void displayScreen4();
+    void displayAPConfig();
     void displayCalibration();
     void displayNotif();
+    void animateTransition(); // Tambahkan ini
 };

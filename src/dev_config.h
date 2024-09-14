@@ -1,9 +1,9 @@
 // Konfigurasi
+#pragma once
 
 // Koneksi WiFi
-#define WIFI_SSID "EWS_AP"
-#define WIFI_PASSWORD "12345678910"
-
+#define AP_WIFI "Chicken-Feeder"
+#define AP_PASSWORD "admin1234"
 
 // MQTT Connection
 #define MQTT_SERVER "test.mosquitto.org"
@@ -14,17 +14,31 @@
 #define TOPIC_sendData "feeder/sendData"
 #define TOPIC_calibrate "feeder/calibrate"
 #define TOPIC_manual "feeder/manual"
+#define TOPIC_response "fedeer/response"
 
+// Spreadsheet Connectio
+#define GAS "AKfycbwQHCQ-DtpNvTgnMncRBVDb3OHax9y0-V_NCsjvrUGooRNu4NUrNiFUrXldDauv4F0d"
+#define host_gs "script.google.com"
+#define https_port_gs 443
 
 // Inisialisasi Pin Driver HX711
 const int LOADCELL_DOUT_PIN = 4;
 const int LOADCELL_SCK_PIN = 5;
 // Nilai kalibrasi pengeluaran pakan per menit (Ex 0.5kg/m)
-#define VAL_CALLIBRATION 1.5 
-
+#define VAL_CALLIBRATION 1.5
 
 // Inisialisasi Pin Stepper
-#define DIR 17 // Saat ini masih menggunakan LED
-#define STEP 23
+
+// Mode Debug menggunakan LED
+// #define DIR 17
+
+// Menggunakan Stepper
+#define DIR 12
+#define STEP 14
+
 // Settingan Step Per Revolution pada Motor Stepper
-#define SPR 200
+#define SPR 1500
+#define RPM 10
+
+// Pin Trigger WiFi Manager
+#define button 0

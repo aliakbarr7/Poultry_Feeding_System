@@ -1,4 +1,5 @@
 #include "display_PCF8574.h"
+#include <dev_config.h>
 
 bool display_PCF8574::begin()
 {
@@ -7,8 +8,9 @@ bool display_PCF8574::begin()
     lcd.setCursor(0, 0);
     lcd.print("Chicken Fedeer");
     delay(2000);
+    displayNotif();
     lastRefreshTime = millis();
-    refreshDisplay();
+    // refreshDisplay();
     return true;
 }
 
@@ -25,6 +27,14 @@ bool display_PCF8574::setCalibration(float known_weight)
     calibrationActive = true;
     refreshDisplay();
     calibrationActive = false;
+    return true;
+}
+
+bool display_PCF8574::setAPConfig()
+{
+    APConfigActive = true;
+    refreshDisplay();
+    APConfigActive = false;
     return true;
 }
 
@@ -87,54 +97,54 @@ bool display_PCF8574::showMessage(std::string notifMessage1, std::string notifMe
     return true;
 }
 
-void display_PCF8574::refreshDisplay()
-{
-    unsigned long currentTime = millis();
+// void display_PCF8574::refreshDisplay()
+// {
+//     unsigned long currentTime = millis();
 
-    if (messageActive)
-    {
-        if (currentTime - messageStartTime >= messageDuration)
-        {
-            messageActive = false;
-            lastRefreshTime = currentTime;
-            refreshDisplay(); // Kembali ke tampilan normal setelah pesan selesai
-        }
-        else
-        {
-            displayNotif(); // Tampilkan pesan selama durasi pesan
-            return;
-        }
-    }
+//     if (messageActive)
+//     {
+//         if (currentTime - messageStartTime >= messageDuration)
+//         {
+//             messageActive = false;
+//             lastRefreshTime = currentTime;
+//             refreshDisplay(); // Kembali ke tampilan normal setelah pesan selesai
+//         }
+//         else
+//         {
+//             displayNotif(); // Tampilkan pesan selama durasi pesan
+//             return;
+//         }
+//     }
 
-    if (calibrationActive)
-    {
-        displayCalibration();
-    }
-    else
-    {
-        if (currentTime - lastRefreshTime >= 2000)
-        {
-            currentScreen = (currentScreen + 1) % 4;
-            lastRefreshTime = currentTime;
-        }
+//     if (calibrationActive)
+//     {
+//         displayCalibration();
+//     }
+//     else
+//     {
+//         if (currentTime - lastRefreshTime >= refreshInterval)
+//         {
+//             currentScreen = (currentScreen + 1) % 4;
+//             lastRefreshTime = currentTime;
+//         }
 
-        switch (currentScreen)
-        {
-        case 0:
-            displayScreen1();
-            break;
-        case 1:
-            displayScreen2();
-            break;
-        case 2:
-            displayScreen3();
-            break;
-        case 3:
-            displayScreen4();
-            break;
-        }
-    }
-}
+//         switch (currentScreen)
+//         {
+//         case 0:
+//             displayScreen1();
+//             break;
+//         case 1:
+//             displayScreen2();
+//             break;
+//         case 2:
+//             displayScreen3();
+//             break;
+//         case 3:
+//             displayScreen4();
+//             break;
+//         }
+//     }
+// }
 
 void display_PCF8574::displayScreen1()
 {
@@ -170,6 +180,15 @@ void display_PCF8574::displayScreen4()
     lcd.printf("F_Sts: %s", _feedStatus.c_str());
 }
 
+void display_PCF8574::displayAPConfig()
+{
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("  WIFI_CONFIG:  ");
+    lcd.setCursor(0, 1);
+    lcd.print(String() + "'" + AP_WIFI + "'");
+}
+
 void display_PCF8574::displayCalibration()
 {
     lcd.clear();
@@ -190,6 +209,7 @@ void display_PCF8574::displayNotif()
 
 bool display_PCF8574::update()
 {
+
     unsigned long currentTime = millis();
 
     if (messageActive)
@@ -202,4 +222,73 @@ bool display_PCF8574::update()
         }
     }
     return messageActive;
+}
+
+void display_PCF8574::refreshDisplay()
+{
+    unsigned long currentTime = millis();
+
+    if (messageActive)
+    {
+        if (currentTime - messageStartTime >= messageDuration)
+        {
+            messageActive = false;
+            lastRefreshTime = currentTime;
+            refreshDisplay(); // Kembali ke tampilan normal setelah pesan selesai
+        }
+        else
+        {
+            displayNotif(); // Tampilkan pesan selama durasi pesan
+            return;
+        }
+    }
+
+    else if (calibrationActive)
+    {
+        displayCalibration();
+    }
+
+    else if (APConfigActive)
+    {
+        displayAPConfig();
+    }
+
+    else
+    {
+        if (currentTime - lastRefreshTime >= refreshInterval)
+        {
+            animateTransition(); // Tambahkan animasi transisi sebelum mengganti layar
+            currentScreen = (currentScreen + 1) % 4;
+            lastRefreshTime = currentTime;
+        }
+
+        switch (currentScreen)
+        {
+        case 0:
+            displayScreen1();
+            break;
+        case 1:
+            displayScreen2();
+            break;
+        case 2:
+            displayScreen3();
+            break;
+        case 3:
+            displayScreen4();
+            break;
+        }
+    }
+}
+
+void display_PCF8574::animateTransition()
+{
+    for (int col = 0; col < 16; col++)
+    {
+        for (int row = 0; row < 2; row++)
+        {
+            lcd.setCursor(col, row);
+            lcd.print(" ");
+            delay(10); // Penundaan kecil untuk menciptakan efek animasi
+        }
+    }
 }

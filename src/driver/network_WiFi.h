@@ -2,17 +2,22 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
-#include <WifiHandler.h>
+#include <WiFiManager.h>
+#include <Preferences.h>
 #include <interfaces/network_interface.h>
+
 
 class network_WiFi : public network_interface
 {
 
 public:
-    network_WiFi(const char *ssid, const char *pass);
+    network_WiFi();
     bool init();
     bool checkStatus();
+    bool WiFiConfig();
 
 private:
-    WifiHandler _wifiHandler;
+    WiFiManager wifiManager;
+    Preferences preferences;
+    bool wifiWasConnected = false; // Variabel untuk mendeteksi perubahan status WiFi
 };
