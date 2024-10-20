@@ -21,9 +21,8 @@ bool display_PCF8574::setLoadValue(float loadValue)
     return true;
 }
 
-bool display_PCF8574::setCalibration(float known_weight)
+bool display_PCF8574::setCalibration()
 {
-    _calibrationWeight = known_weight;
     calibrationActive = true;
     refreshDisplay();
     calibrationActive = false;
@@ -97,55 +96,6 @@ bool display_PCF8574::showMessage(std::string notifMessage1, std::string notifMe
     return true;
 }
 
-// void display_PCF8574::refreshDisplay()
-// {
-//     unsigned long currentTime = millis();
-
-//     if (messageActive)
-//     {
-//         if (currentTime - messageStartTime >= messageDuration)
-//         {
-//             messageActive = false;
-//             lastRefreshTime = currentTime;
-//             refreshDisplay(); // Kembali ke tampilan normal setelah pesan selesai
-//         }
-//         else
-//         {
-//             displayNotif(); // Tampilkan pesan selama durasi pesan
-//             return;
-//         }
-//     }
-
-//     if (calibrationActive)
-//     {
-//         displayCalibration();
-//     }
-//     else
-//     {
-//         if (currentTime - lastRefreshTime >= refreshInterval)
-//         {
-//             currentScreen = (currentScreen + 1) % 4;
-//             lastRefreshTime = currentTime;
-//         }
-
-//         switch (currentScreen)
-//         {
-//         case 0:
-//             displayScreen1();
-//             break;
-//         case 1:
-//             displayScreen2();
-//             break;
-//         case 2:
-//             displayScreen3();
-//             break;
-//         case 3:
-//             displayScreen4();
-//             break;
-//         }
-//     }
-// }
-
 void display_PCF8574::displayScreen1()
 {
     lcd.clear();
@@ -193,9 +143,9 @@ void display_PCF8574::displayCalibration()
 {
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print("Kalibrasi...");
+    lcd.print("Kalibrasi");
     lcd.setCursor(0, 1);
-    lcd.printf("N_FK: %.2f", _calibrationWeight);
+    lcd.print("Loadcell...");
 }
 
 void display_PCF8574::displayNotif()

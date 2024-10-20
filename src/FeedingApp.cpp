@@ -14,7 +14,8 @@ FeedingApp::FeedingApp(network_interface &net, communication_interface &comm, di
       schedule1HasRun(false), schedule2HasRun(false), schedule3HasRun(false), // Inisialisasi flag
       startMillisLog(0), intervalShowLog(0), dataIndex(0), showDataInProgress(false),
       feedModeLog(""), feedTimeLog(""), rawDurasiFeedLog(0.0), rawTotalPakanLog(0.0),
-      durasiFeedLog("0"), totalPakanLog("0")
+      durasiFeedLog("0"), totalPakanLog("0"),
+      pressStartTime(0), buttonPressed(false), lastDebounceTime(0), debounceDelay(50) // Inisialisasi variabel tombol
 {
     client.setInsecure();
 }
@@ -71,7 +72,7 @@ void FeedingApp::init()
     }
 
     loadConfig();
-    _sens.begin(calibrationValue);
+    _sens.begin();
 
     _disp.setSchedule1(schedule1.c_str());
     _disp.setSchedule2(schedule2.c_str());
@@ -89,6 +90,9 @@ void FeedingApp::loop()
 {
     _comm.loop();
     _disp.update();
+
+    _sens.getLoad();
+    Serial.println("Berat: " + String(_sens.getLoad()) + " Kg");
 
     bool wifiConnected = _net.checkStatus();
 
@@ -166,7 +170,6 @@ void FeedingApp::loop()
         loadLog();
     }
 
-    // _step.update();
 }
 
 void FeedingApp::callback(char *topic, byte *payload, unsigned int length)
@@ -193,10 +196,6 @@ void FeedingApp::callback(char *topic, byte *payload, unsigned int length)
     else if (String(topic) == TOPIC_setPakan)
     {
         handleSetFeedMessage(message);
-    }
-    else if (String(topic) == TOPIC_calibrate)
-    {
-        handleCalibrationMessage(message);
     }
 
     if (hasConfigChanged())
@@ -337,46 +336,13 @@ void FeedingApp::handleSetFeedMessage(const String &message)
     }
 }
 
-void FeedingApp::handleCalibrationMessage(const String &message)
-{
-    if (message.startsWith("*") && message.endsWith("#"))
-    {
-        String msg = message.substring(1, message.length() - 1);
-        char data[2][10];
-        int index = 0;
-        int startPos = 0;
-        for (int i = 0; i < msg.length(); i++)
-        {
-            if (msg[i] == ',' || i == msg.length() - 1)
-            {
-                int endPos = (i == msg.length() - 1) ? i + 1 : i;
-                msg.substring(startPos, endPos).toCharArray(data[index], 10);
-                startPos = i + 1;
-                index++;
-            }
-        }
-
-        if (index == 2)
-        {
-            String id = String(data[0]);
-            calibrationValue = String(data[1]).toFloat();
-
-            String response = "*" + String(005) + "," + "Calibration Settings Updated!" + "#";
-            _comm.publish(TOPIC_response, response.c_str());
-
-            startCalibration(calibrationValue);
-        }
-    }
-}
-
-void FeedingApp::startCalibration(float knownWeight)
+void FeedingApp::startCalibration()
 {
     isCalibrating = true;
     calibrationStartTime = millis();
-    _disp.setCalibration(knownWeight);
-    _sens.calibrate(knownWeight);
+    _disp.setCalibration();
+    _sens.calibrate();
     Serial.println("Calibration started:");
-    Serial.println("Known Weight: " + String(knownWeight) + " kg");
 }
 
 void FeedingApp::stopCalibration()
@@ -444,6 +410,22 @@ bool FeedingApp::isTimeToFeed(const String &schedule)
 
 void FeedingApp::startFeeding()
 {
+    float loadcellData = _sens.getLoad();
+
+    if (loadcellData <= 0.0)
+    {
+        // Notifikasi ke display
+        _disp.setFeedStatus("Pakan Kosong");
+        _disp.showMessage("Fedeer", "Pakan Kosong");
+        Serial.println("Pakan habis atau kosong. Feeder tidak diaktifkan.");
+
+        // Notifikasi ke MQTT
+        String response = "*" + String(004) + "," + "Pakan Kosong/Habis!" + "#";
+        _comm.publish(TOPIC_response, response.c_str());
+
+        return; // Tidak melanjutkan eksekusi pengaktifan feeder
+    }
+
     _step.start();
     feedingStartTime = millis();
     isFeeding = true;
@@ -545,21 +527,46 @@ void FeedingApp::updateFeedDuration()
     Serial.println("Feed Duration per Schedule: " + String(feedDuration / 1000) + " Detik");
 }
 
+
 void FeedingApp::buttonConfig(int button_pin)
 {
-    if (digitalRead(button_pin) == LOW)
-    {
-        _disp.setAPConfig();
-        _net.WiFiConfig();
+    int buttonState = digitalRead(button_pin); // Membaca status tombol
 
-        if (_net.checkStatus())
+    // Jika tombol ditekan (LOW)
+    if (buttonState == LOW && !buttonPressed)
+    {
+        pressStartTime = millis(); // Catat waktu saat tombol ditekan pertama kali
+        buttonPressed = true;      // Menandai bahwa tombol sedang ditekan
+    }
+
+    // Jika tombol dilepaskan (HIGH)
+    if (buttonState == HIGH && buttonPressed)
+    {
+        unsigned long pressDuration = millis() - pressStartTime; // Hitung durasi tombol ditekan
+
+        // Jika tombol ditekan kurang dari 5 detik
+        if (pressDuration < 3000)
         {
-            _disp.showMessage("      WiFi     ", "   Connected!   ");
+            Serial.println("WiFi setup dimulai.");
+            _disp.setAPConfig();
+            _net.WiFiConfig();
+
+            if (_net.checkStatus())
+            {
+                _disp.showMessage("      WiFi     ", "   Connected!   ");
+            }
+            else
+            {
+                _disp.showMessage("      WiFi     ", " Not Connected! ");
+            }
         }
-        else
+        // Jika tombol ditekan lebih dari 5 detik
+        else if (pressDuration >= 3000)
         {
-            _disp.showMessage("      WiFi     ", " Not Connected! ");
+            startCalibration();
         }
+
+        buttonPressed = false; // Reset status tombol setelah dilepas
     }
 }
 

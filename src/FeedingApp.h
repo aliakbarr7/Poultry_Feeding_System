@@ -86,6 +86,11 @@ private:
     float prevTotalFeed;
     float prevCalibration;
 
+    unsigned long lastDebounceTime = 0;     // Waktu terakhir tombol diproses
+    const unsigned long debounceDelay = 50; // Debounce delay dalam milidetik
+    unsigned long pressStartTime;           // Waktu saat tombol ditekan pertama kali
+    bool buttonPressed;                     // Status apakah tombol sedang ditekan
+
     String GAS_ID = GAS;
     const char *host_googlesheet = host_gs;
     const int httpsPort_googlesheet = https_port_gs;
@@ -94,7 +99,7 @@ private:
     void handleScheduleMessage(const String &message);
     void handleManualMessage(const String &message);
     void handleSetFeedMessage(const String &message);
-    void handleCalibrationMessage(const String &message);
+    // void handleCalibrationMessage(const String &message);
     void handleStartFeedLog(String mode);
     void handleStopFeedLog();
     void showDat();
@@ -104,7 +109,7 @@ private:
     bool isTimeToFeed(const String &schedule);
     void startFeeding();
     void stopFeeding();
-    void startCalibration(float knownWeight);
+    void startCalibration();
     void stopCalibration();
     void saveConfig();
     void loadConfig();

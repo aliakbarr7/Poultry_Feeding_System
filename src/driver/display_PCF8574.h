@@ -12,7 +12,7 @@ public:
     display_PCF8574() : lcd(0x27, 16, 2), currentScreen(0), calibrationActive(false), messageActive(false) {} // Ganti alamat I2C jika diperlukan
     bool begin();
     bool setLoadValue(float loadValue);
-    bool setCalibration(float known_weight);
+    bool setCalibration();
     bool setFeedStatus(std::string FeedStatusStr);
     bool setFeedPerDay(float setFeedPerDay);
     bool setSchedule1(std::string timeSchedule1);
@@ -27,7 +27,6 @@ public:
 private:
     LiquidCrystal_I2C lcd;
     float _loadValue = 0;
-    float _calibrationWeight = 0;
     std::string _feedStatus;
     float _feedPerDay;
     std::string _schedule1;

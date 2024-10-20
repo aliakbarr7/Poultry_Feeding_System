@@ -7,7 +7,7 @@ class display_interface
     public:
         virtual bool begin() = 0;
         virtual bool setLoadValue(float loadValue) = 0;
-        virtual bool setCalibration(float known_weight) = 0;
+        virtual bool setCalibration() = 0;
         virtual bool setFeedStatus(std::string FeedStatusStr) = 0;
         virtual bool setFeedPerDay(float setFeedPerDay) = 0;
         virtual bool setSchedule1(std::string timeSchedule1) = 0;

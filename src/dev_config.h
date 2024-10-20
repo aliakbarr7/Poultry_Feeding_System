@@ -6,7 +6,7 @@
 #define AP_PASSWORD "admin1234"
 
 // MQTT Connection
-#define MQTT_SERVER "test.mosquitto.org"
+#define MQTT_SERVER "angkasatimelapse.com"
 #define MQTT_CLIENTID "Poultry Feeding System"
 // MQTT Topic
 #define TOPIC_setSchedule "feeder/setschedule"
@@ -22,10 +22,10 @@
 #define https_port_gs 443
 
 // Inisialisasi Pin Driver HX711
-const int LOADCELL_DOUT_PIN = 4;
-const int LOADCELL_SCK_PIN = 5;
-// Nilai kalibrasi pengeluaran pakan per menit (Ex 0.5kg/m)
-#define VAL_CALLIBRATION 1.5
+const int LOADCELL_DOUT_PIN = 18;
+const int LOADCELL_SCK_PIN = 19;
+// Nilai kalibrasi pengeluaran pakan per menit (2.2kg/m)
+#define VAL_CALLIBRATION 2.2
 
 // Inisialisasi Pin Stepper
 
@@ -33,8 +33,8 @@ const int LOADCELL_SCK_PIN = 5;
 // #define DIR 17
 
 // Menggunakan Stepper
-#define DIR 12
-#define STEP 14
+#define DIR 26
+#define STEP 25
 
 // Settingan Step Per Revolution pada Motor Stepper
 #define SPR 1500
