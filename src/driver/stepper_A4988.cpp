@@ -37,7 +37,7 @@ void stepper_A4988::rotateCounterClockwise()
 // Fungsi untuk memutar motor berlawanan arah selama 5 detik
 void stepper_A4988::rotateClockwise()
 {
-    isRunning = true;           // Atur isRunning ke true agar motor bisa berputar
+    isRunning = true; // Atur isRunning ke true agar motor bisa berputar
     Serial.println("Memutar berlawanan jarum jam selama 5 detik...");
     unsigned long startTime = millis();
     digitalWrite(DIR_PIN, HIGH); // Atur arah ke berlawanan jarum jam
@@ -58,6 +58,9 @@ void stepper_A4988::start()
         if (clockwiseDirection)
         {
             rotateCounterClockwise();
+
+            // Dummy Tes LED
+            // digitalWrite(DIR_PIN, HIGH);
         }
     }
     else
@@ -84,6 +87,9 @@ void stepper_A4988::stop()
         digitalWrite(STEP_PIN, LOW); // Matikan STEP pin
         digitalWrite(DIR_PIN, LOW);  // Matikan DIR pin
         Serial.println("Stepper berhenti total.");
+
+        // Dummy Tes LED
+        // digitalWrite(DIR_PIN, LOW);
     }
     else
     {
@@ -100,5 +106,4 @@ void stepper_A4988::update()
         // Serial.print("State isRunning = ");
         // Serial.println(isRunning);
     }
-
 }

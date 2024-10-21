@@ -46,9 +46,9 @@ void FeedingApp::init()
         delay(1000);
         if (_comm.init() && _comm.connect())
         {
-            _disp.showMessage("Connected to....", "mosquitto.org");
+            _disp.showMessage("Connected to....", "MQTT-Broker");
             delay(1000);
-            Serial.println("Connected to test.mosquitto.org");
+            Serial.println("Connected to MQTT-Broker");
             _comm.subscribe(TOPIC_setSchedule);
             _comm.subscribe(TOPIC_manual);
             _comm.subscribe(TOPIC_setPakan);
@@ -92,7 +92,7 @@ void FeedingApp::loop()
     _disp.update();
 
     _sens.getLoad();
-    Serial.println("Berat: " + String(_sens.getLoad()) + " Kg");
+    // Serial.println("Berat: " + String(_sens.getLoad()) + " Kg");
 
     bool wifiConnected = _net.checkStatus();
 
@@ -103,9 +103,9 @@ void FeedingApp::loop()
 
         if (_comm.init() && _comm.connect())
         {
-            _disp.showMessage("Connected to....", "mosquitto.org");
+            _disp.showMessage("Connected to....", "MQTT-Broker");
             delay(1000);
-            Serial.println("Connected to test.mosquitto.org");
+            Serial.println("Connected to MQTT-Broker");
             _comm.subscribe(TOPIC_setSchedule);
             _comm.subscribe(TOPIC_manual);
             _comm.subscribe(TOPIC_setPakan);
@@ -136,7 +136,8 @@ void FeedingApp::loop()
         if (currentMillis - lastSendDataTime >= sendDataInterval)
         {
             lastSendDataTime = currentMillis;
-            float loadcellData = _sens.getLoad();
+            // float loadcellData = _sens.getLoad();
+            float loadcellData = 5.8;
             String payload = String(loadcellData);
             _comm.publish(TOPIC_sendData, payload.c_str());
             _disp.setLoadValue(loadcellData);
@@ -153,6 +154,7 @@ void FeedingApp::loop()
             if (!isFeed_ManualMode)
             {
                 stopFeeding();
+                delay(1000);
                 handleStopFeedLog();
             }
         }
@@ -169,7 +171,6 @@ void FeedingApp::loop()
     {
         loadLog();
     }
-
 }
 
 void FeedingApp::callback(char *topic, byte *payload, unsigned int length)
@@ -286,9 +287,9 @@ void FeedingApp::handleManualMessage(const String &message)
 
                 String response = "*" + String(002) + "," + "Fedeer Non Activated!" + "#";
                 _comm.publish(TOPIC_response, response.c_str());
+                stopFeeding();
                 handleStopFeedLog();
                 isFeed_ManualMode = false;
-                stopFeeding();
             }
         }
     }
@@ -362,7 +363,7 @@ void FeedingApp::checkSchedule()
         hasFedSchedule1 = false;
         hasFedSchedule2 = false;
         hasFedSchedule3 = false;
-        schedule1HasRun = false; // Reset flag ini saat menit berubah
+        schedule1HasRun = false;
         schedule2HasRun = false;
         schedule3HasRun = false;
 
@@ -372,27 +373,27 @@ void FeedingApp::checkSchedule()
     // Eksekusi hanya jika jadwal belum pernah dijalankan untuk menit ini
     if (isTimeToFeed(schedule1) && !schedule1Active && !isFeed_ManualMode && !schedule1HasRun)
     {
+        handleStartFeedLog("Auto");
+        startFeeding();
         schedule1Active = true;
         hasFedSchedule1 = true;
         schedule1HasRun = true; // Tandai bahwa schedule 1 sudah dijalankan
-        handleStartFeedLog("Auto");
-        startFeeding();
     }
     else if (isTimeToFeed(schedule2) && !schedule2Active && !isFeed_ManualMode && !schedule2HasRun)
     {
+        handleStartFeedLog("Auto");
+        startFeeding();
         schedule2Active = true;
         hasFedSchedule2 = true;
         schedule2HasRun = true; // Tandai bahwa schedule 2 sudah dijalankan
-        handleStartFeedLog("Auto");
-        startFeeding();
     }
     else if (isTimeToFeed(schedule3) && !schedule3Active && !isFeed_ManualMode && !schedule3HasRun)
     {
+        handleStartFeedLog("Auto");
+        startFeeding();
         schedule3Active = true;
         hasFedSchedule3 = true;
         schedule3HasRun = true; // Tandai bahwa schedule 3 sudah dijalankan
-        handleStartFeedLog("Auto");
-        startFeeding();
     }
 }
 
@@ -410,7 +411,8 @@ bool FeedingApp::isTimeToFeed(const String &schedule)
 
 void FeedingApp::startFeeding()
 {
-    float loadcellData = _sens.getLoad();
+    // float loadcellData = _sens.getLoad();
+    float loadcellData = 5.8;
 
     if (loadcellData <= 0.0)
     {
@@ -526,7 +528,6 @@ void FeedingApp::updateFeedDuration()
     Serial.println("Feed Duration updated:");
     Serial.println("Feed Duration per Schedule: " + String(feedDuration / 1000) + " Detik");
 }
-
 
 void FeedingApp::buttonConfig(int button_pin)
 {
@@ -703,6 +704,7 @@ void FeedingApp::loadLog()
         {
             showDataInProgress = false;
             Serial.println("Semua data telah ditampilkan.");
+            _disp.showMessage("Backup FeedLog", "Sukses Terkirim!");
             _stg.deleteFile("/data.txt");
             Serial.println("Log Data berhasil dihapus.");
         }
@@ -748,17 +750,20 @@ void FeedingApp::handleStopFeedLog()
             if (result)
             {
                 Serial.println("Data berhasil terkirim.");
+                _disp.showMessage("FeedLog Berhasil", "Terkirim!");
             }
 
             else
             {
                 Serial.println("Pengiriman data gagal.");
+                _disp.showMessage("FeedLog Gagal", "Terkirim!");
             }
         }
     }
     else
     {
         saveLog();
+        _disp.showMessage("FeedLog Berhasil", "Disimpan! (FS)");
     }
 
     feedModeLog = "";
