@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <dev_config.h>
-#include "FeedingApp.h"
+#include <application/FeedingApp.h>
 #include <driver/communication_mqtt.h>
 #include <driver/display_PCF8574.h>
 #include <driver/network_WiFi.h>

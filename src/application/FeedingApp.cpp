@@ -11,11 +11,11 @@ FeedingApp::FeedingApp(network_interface &net, communication_interface &comm, di
       schedule3Active(false), prevSchedule1(""), prevSchedule2(""), prevSchedule3(""),
       prevTotalFeed(0), prevCalibration(1.0), hasFedSchedule1(false),
       hasFedSchedule2(false), hasFedSchedule3(false), lastMinute(-1),
-      schedule1HasRun(false), schedule2HasRun(false), schedule3HasRun(false), // Inisialisasi flag
+      schedule1HasRun(false), schedule2HasRun(false), schedule3HasRun(false),
       startMillisLog(0), intervalShowLog(0), dataIndex(0), showDataInProgress(false),
       feedModeLog(""), feedTimeLog(""), rawDurasiFeedLog(0.0), rawTotalPakanLog(0.0),
       durasiFeedLog("0"), totalPakanLog("0"),
-      pressStartTime(0), buttonPressed(false), lastDebounceTime(0), debounceDelay(50) // Inisialisasi variabel tombol
+      pressStartTime(0), buttonPressed(false), lastDebounceTime(0), debounceDelay(50)
 {
     client.setInsecure();
 }
@@ -35,7 +35,7 @@ void FeedingApp::init()
     {
         Serial.println("Failed to initialize storage");
         while (1)
-            ; // Halt execution if storage initialization fails
+            ;
     }
 
     if (_net.init())
@@ -88,11 +88,10 @@ void FeedingApp::init()
 
 void FeedingApp::loop()
 {
-    _comm.loop();
+    _comm.loop(); // Ensure MQTT loop is called regularly
     _disp.update();
 
     _sens.getLoad();
-    // Serial.println("Berat: " + String(_sens.getLoad()) + " Kg");
 
     bool wifiConnected = _net.checkStatus();
 
@@ -136,8 +135,10 @@ void FeedingApp::loop()
         if (currentMillis - lastSendDataTime >= sendDataInterval)
         {
             lastSendDataTime = currentMillis;
+
             // float loadcellData = _sens.getLoad();
-            float loadcellData = 5.8;
+            float loadcellData = 4.9;
+
             String payload = String(loadcellData);
             _comm.publish(TOPIC_sendData, payload.c_str());
             _disp.setLoadValue(loadcellData);
@@ -205,6 +206,22 @@ void FeedingApp::callback(char *topic, byte *payload, unsigned int length)
     }
 }
 
+void FeedingApp::startCalibration()
+{
+    isCalibrating = true;
+    calibrationStartTime = millis();
+    _disp.setCalibration();
+    _sens.calibrate();
+    Serial.println("Calibration started:");
+}
+
+void FeedingApp::stopCalibration()
+{
+    _disp.showMessage("Proses Kalibrasi", "Selesai!");
+    Serial.println("Calibration stopped");
+    isCalibrating = false;
+}
+
 void FeedingApp::handleScheduleMessage(const String &message)
 {
     if (message.startsWith("*") && message.endsWith("#"))
@@ -226,15 +243,9 @@ void FeedingApp::handleScheduleMessage(const String &message)
 
         if (index == 4)
         {
-            String id = String(data[0]);
             schedule1 = String(data[1]);
             schedule2 = String(data[2]);
             schedule3 = String(data[3]);
-
-            Serial.println("Schedules updated:");
-            Serial.println("Schedule 1: " + schedule1);
-            Serial.println("Schedule 2: " + schedule2);
-            Serial.println("Schedule 3: " + schedule3);
 
             _disp.showMessage("Memperbarui", "Jadwal...");
             _disp.setSchedule1(schedule1.c_str());
@@ -268,25 +279,16 @@ void FeedingApp::handleManualMessage(const String &message)
 
         if (index == 2)
         {
-            String id = String(data[0]);
             String state = String(data[1]);
 
             if (state == "1")
             {
-                Serial.println("Starting feeding manually");
-
-                String response = "*" + String(002) + "," + "Fedeer Activated!" + "#";
-                _comm.publish(TOPIC_response, response.c_str());
                 handleStartFeedLog("Manual");
                 isFeed_ManualMode = true;
                 startFeeding();
             }
             else if (state == "0")
             {
-                Serial.println("Stopping feeding manually");
-
-                String response = "*" + String(002) + "," + "Fedeer Non Activated!" + "#";
-                _comm.publish(TOPIC_response, response.c_str());
                 stopFeeding();
                 handleStopFeedLog();
                 isFeed_ManualMode = false;
@@ -297,8 +299,6 @@ void FeedingApp::handleManualMessage(const String &message)
 
 void FeedingApp::handleSetFeedMessage(const String &message)
 {
-    Serial.println("handleManualMessage called with message: " + message);
-
     if (message.startsWith("*") && message.endsWith("#"))
     {
         String msg = message.substring(1, message.length() - 1);
@@ -318,7 +318,6 @@ void FeedingApp::handleSetFeedMessage(const String &message)
 
         if (index == 2)
         {
-            String id = String(data[0]);
             totalFeed = String(data[1]).toFloat();
 
             updateFeedDuration();
@@ -329,77 +328,45 @@ void FeedingApp::handleSetFeedMessage(const String &message)
 
             String response = "*" + String(003) + "," + "Feed Settings Updated!" + "#";
             _comm.publish(TOPIC_response, response.c_str());
-
-            Serial.println("Feed settings updated:");
-            Serial.println("Total Feed: " + String(totalFeed) + " kg");
-            Serial.println("Feed Duration per Schedule: " + String(feedDuration / 1000) + " Detik");
         }
     }
 }
 
-void FeedingApp::startCalibration()
-{
-    isCalibrating = true;
-    calibrationStartTime = millis();
-    _disp.setCalibration();
-    _sens.calibrate();
-    Serial.println("Calibration started:");
-}
-
-void FeedingApp::stopCalibration()
-{
-    _disp.showMessage("Proses Kalibrasi", "Selesai!");
-    Serial.println("Calibration stopped");
-    isCalibrating = false;
-}
-
 void FeedingApp::checkSchedule()
 {
-    int currentMinute = _time.getMinute(); // Dapatkan menit saat ini
+    int currentMinute = _time.getMinute();
 
     if (currentMinute != lastMinute)
     {
-        // Reset flag saat menit berubah
         hasFedSchedule1 = false;
         hasFedSchedule2 = false;
         hasFedSchedule3 = false;
-        schedule1HasRun = false;
-        schedule2HasRun = false;
-        schedule3HasRun = false;
 
         lastMinute = currentMinute;
     }
 
-    // Eksekusi hanya jika jadwal belum pernah dijalankan untuk menit ini
-    if (isTimeToFeed(schedule1) && !schedule1Active && !isFeed_ManualMode && !schedule1HasRun)
+    if (isTimeToFeed(schedule1) && !schedule1Active && !isFeed_ManualMode && !hasFedSchedule1)
     {
         handleStartFeedLog("Auto");
         startFeeding();
-        schedule1Active = true;
         hasFedSchedule1 = true;
-        schedule1HasRun = true; // Tandai bahwa schedule 1 sudah dijalankan
     }
-    else if (isTimeToFeed(schedule2) && !schedule2Active && !isFeed_ManualMode && !schedule2HasRun)
+    else if (isTimeToFeed(schedule2) && !schedule2Active && !isFeed_ManualMode && !hasFedSchedule2)
     {
         handleStartFeedLog("Auto");
         startFeeding();
-        schedule2Active = true;
         hasFedSchedule2 = true;
-        schedule2HasRun = true; // Tandai bahwa schedule 2 sudah dijalankan
     }
-    else if (isTimeToFeed(schedule3) && !schedule3Active && !isFeed_ManualMode && !schedule3HasRun)
+    else if (isTimeToFeed(schedule3) && !schedule3Active && !isFeed_ManualMode && !hasFedSchedule3)
     {
         handleStartFeedLog("Auto");
         startFeeding();
-        schedule3Active = true;
         hasFedSchedule3 = true;
-        schedule3HasRun = true; // Tandai bahwa schedule 3 sudah dijalankan
     }
 }
 
 bool FeedingApp::isTimeToFeed(const String &schedule)
 {
-    String now = _time.getCurrentTime();
     int currentHour = _time.getHour();
     int currentMinute = _time.getMinute();
 
@@ -412,20 +379,15 @@ bool FeedingApp::isTimeToFeed(const String &schedule)
 void FeedingApp::startFeeding()
 {
     // float loadcellData = _sens.getLoad();
-    float loadcellData = 5.8;
+    float loadcellData = 4.9;
 
     if (loadcellData <= 0.0)
     {
-        // Notifikasi ke display
         _disp.setFeedStatus("Pakan Kosong");
         _disp.showMessage("Fedeer", "Pakan Kosong");
-        Serial.println("Pakan habis atau kosong. Feeder tidak diaktifkan.");
-
-        // Notifikasi ke MQTT
         String response = "*" + String(004) + "," + "Pakan Kosong/Habis!" + "#";
         _comm.publish(TOPIC_response, response.c_str());
-
-        return; // Tidak melanjutkan eksekusi pengaktifan feeder
+        return;
     }
 
     _step.start();
@@ -529,57 +491,12 @@ void FeedingApp::updateFeedDuration()
     Serial.println("Feed Duration per Schedule: " + String(feedDuration / 1000) + " Detik");
 }
 
-void FeedingApp::buttonConfig(int button_pin)
-{
-    int buttonState = digitalRead(button_pin); // Membaca status tombol
-
-    // Jika tombol ditekan (LOW)
-    if (buttonState == LOW && !buttonPressed)
-    {
-        pressStartTime = millis(); // Catat waktu saat tombol ditekan pertama kali
-        buttonPressed = true;      // Menandai bahwa tombol sedang ditekan
-    }
-
-    // Jika tombol dilepaskan (HIGH)
-    if (buttonState == HIGH && buttonPressed)
-    {
-        unsigned long pressDuration = millis() - pressStartTime; // Hitung durasi tombol ditekan
-
-        // Jika tombol ditekan kurang dari 5 detik
-        if (pressDuration < 3000)
-        {
-            Serial.println("WiFi setup dimulai.");
-            _disp.setAPConfig();
-            _net.WiFiConfig();
-
-            if (_net.checkStatus())
-            {
-                _disp.showMessage("      WiFi     ", "   Connected!   ");
-            }
-            else
-            {
-                _disp.showMessage("      WiFi     ", " Not Connected! ");
-            }
-        }
-        // Jika tombol ditekan lebih dari 5 detik
-        else if (pressDuration >= 3000)
-        {
-            startCalibration();
-        }
-
-        buttonPressed = false; // Reset status tombol setelah dilepas
-    }
-}
-
 void FeedingApp::saveLog()
 {
     std::string data = "*" + std::string(feedModeLog.c_str()) + "," + std::string(durasiFeedLog.c_str()) + "," + std::string(totalPakanLog.c_str()) + "," + std::string(feedTimeLog.c_str()) + "#\n";
-
     std::string existingData = _stg.readFile("/data.txt");
     existingData += data;
-
     _stg.writeFile("/data.txt", existingData);
-
     Serial.println("Data yang disimpan:");
     Serial.println(data.c_str());
 }
@@ -591,7 +508,6 @@ void FeedingApp::loadLog()
     static int retryCount = 0;
     static bool dataValidated = false;
 
-    // Baca data hanya jika tidak sedang menunjukkan data sebelumnya
     if (!showDataInProgress)
     {
         dataIndex = 0;
@@ -638,10 +554,6 @@ void FeedingApp::loadLog()
         {
             std::string line = data.substr(lineStart, lineEnd - lineStart);
 
-            Serial.println();
-            Serial.print("Index = ");
-            Serial.println(dataIndex);
-
             line = line.substr(1, line.length() - 2);
             int firstComma = line.find(',');
             int secondComma = line.find(',', firstComma + 1);
@@ -656,25 +568,18 @@ void FeedingApp::loadLog()
             Serial.println("Durasi = " + String(durasi.c_str()) + " minutes");
             Serial.println("Total Pakan = " + String(totalPakan.c_str()) + " kg");
             Serial.println("Waktu = " + String(waktu.c_str()));
-            Serial.println();
 
-            // Hanya lakukan retry jika waktu retry sudah terlewati
             if (millis() - lastAttemptTime >= 2000)
             {
-                // Pengiriman data ke Google Spreadsheet dengan retry 5 kali jika gagal
                 if (!dataValidated && retryCount < 5)
                 {
-                    Serial.print("Mengirim data: ");
-                    Serial.println(currentLine.c_str());
-
-                    // Mengirim data ke Google Spreadsheet dan memvalidasi
                     bool stateLogSpreadsheet = sendDataToGoogle(mode, durasi, totalPakan, waktu);
 
                     if (stateLogSpreadsheet)
                     {
                         Serial.println("Data berhasil terkirim.");
                         dataValidated = true;
-                        retryCount = 0; // Reset retry untuk data berikutnya
+                        retryCount = 0;
                     }
                     else
                     {
@@ -688,22 +593,20 @@ void FeedingApp::loadLog()
                 {
                     Serial.println("Percobaan maksimal tercapai. Melewati data.");
                     retryCount = 0;
-                    dataValidated = true; // Lanjut ke data berikutnya
+                    dataValidated = true;
                 }
             }
 
-            // Jika data sudah divalidasi, lanjut ke data berikutnya
             if (dataValidated)
             {
                 dataIndex++;
                 intervalShowLog = millis();
-                dataValidated = false; // Reset status validasi untuk data berikutnya
+                dataValidated = false;
             }
         }
         else
         {
             showDataInProgress = false;
-            Serial.println("Semua data telah ditampilkan.");
             _disp.showMessage("Backup FeedLog", "Sukses Terkirim!");
             _stg.deleteFile("/data.txt");
             Serial.println("Log Data berhasil dihapus.");
@@ -731,31 +634,19 @@ void FeedingApp::handleStopFeedLog()
     {
         if (feedModeLog != "")
         {
-            Serial.println();
-            Serial.println("Mode = " + feedModeLog);
-            Serial.println("Durasi = " + String(durasiFeedLog) + " minutes");
-            Serial.println("Total Pakan = " + String(totalPakanLog) + " kg");
-            Serial.println("Waktu = " + feedTimeLog);
-            Serial.println();
-
-            // Konversi variabel String ke std::string
             std::string mode = std::string(feedModeLog.c_str());
             std::string durasi = std::string(durasiFeedLog.c_str());
             std::string totalPakan = std::string(totalPakanLog.c_str());
             std::string waktu = std::string(feedTimeLog.c_str());
 
-            // Panggil fungsi sendDataToGoogle
             bool result = sendDataToGoogle(mode, durasi, totalPakan, waktu);
 
             if (result)
             {
-                Serial.println("Data berhasil terkirim.");
                 _disp.showMessage("FeedLog Berhasil", "Terkirim!");
             }
-
             else
             {
-                Serial.println("Pengiriman data gagal.");
                 _disp.showMessage("FeedLog Gagal", "Terkirim!");
             }
         }
@@ -777,8 +668,7 @@ void FeedingApp::resetSystem()
 
 bool FeedingApp::sendDataToGoogle(const std::string &mode, const std::string &durasi, const std::string &totalPakan, const std::string &waktu)
 {
-    Serial.println("Sending data to Google Sheets...");
-
+    client.setTimeout(10000); // Set timeout 10 detik
     if (!client.connect(host_googlesheet, httpsPort_googlesheet))
     {
         Serial.println("Connection to Google failed.");
@@ -797,7 +687,6 @@ bool FeedingApp::sendDataToGoogle(const std::string &mode, const std::string &du
 
     Serial.println("Request sent: " + url);
 
-    // Read the response
     String responseBody = "";
     while (client.connected())
     {
@@ -806,14 +695,12 @@ bool FeedingApp::sendDataToGoogle(const std::string &mode, const std::string &du
             String line = client.readStringUntil('\n');
             responseBody += line;
         }
+        _comm.loop(); // Keep calling MQTT loop to maintain connection
     }
 
-    client.stop(); // Close connection
-    // Serial.println("Response from server: " + responseBody);
+    client.stop();
 
-    // Check if the response indicates success
     bool success = checkGoogleResponse(responseBody);
-
     if (!success)
     {
         Serial.println("Failed to send data to Google Sheets.");
@@ -823,17 +710,57 @@ bool FeedingApp::sendDataToGoogle(const std::string &mode, const std::string &du
 
 bool FeedingApp::checkGoogleResponse(String response)
 {
-    // Cek jika respons mengandung "state":"success" atau "2a8" atau kode redirect 302
     if (response.indexOf("\"state\":\"success\"") >= 0 || response.indexOf("2a8") >= 0)
     {
-        return true; // Data berhasil dikirim
+        return true;
     }
 
-    // Jika respons menunjukkan pengalihan (302 Moved Temporarily), anggap sukses
     if (response.indexOf("HTTP/1.1 302") >= 0 || response.indexOf("Moved Temporarily") >= 0)
     {
-        return true; // Redirect, tapi dianggap sukses
+        return true;
     }
 
-    return false; // Jika tidak ada tanda-tanda sukses, anggap gagal
+    return false;
+}
+
+void FeedingApp::buttonConfig(int button_pin)
+{
+    int buttonState = digitalRead(button_pin); // Membaca status tombol
+
+    // Jika tombol ditekan (LOW)
+    if (buttonState == LOW && !buttonPressed)
+    {
+        pressStartTime = millis(); // Catat waktu saat tombol ditekan pertama kali
+        buttonPressed = true;      // Menandai bahwa tombol sedang ditekan
+    }
+
+    // Jika tombol dilepaskan (HIGH)
+    if (buttonState == HIGH && buttonPressed)
+    {
+        unsigned long pressDuration = millis() - pressStartTime; // Hitung durasi tombol ditekan
+
+        // Jika tombol ditekan kurang dari 5 detik
+        if (pressDuration < 3000)
+        {
+            Serial.println("WiFi setup dimulai.");
+            _disp.setAPConfig();
+            _net.WiFiConfig();
+
+            if (_net.checkStatus())
+            {
+                _disp.showMessage("      WiFi     ", "   Connected!   ");
+            }
+            else
+            {
+                _disp.showMessage("      WiFi     ", " Not Connected! ");
+            }
+        }
+        // Jika tombol ditekan lebih dari 5 detik
+        else if (pressDuration >= 3000)
+        {
+            startCalibration();
+        }
+
+        buttonPressed = false; // Reset status tombol setelah dilepas
+    }
 }

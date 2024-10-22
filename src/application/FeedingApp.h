@@ -1,6 +1,6 @@
 #pragma once
 #include <Arduino.h>
-#include <ArduinoJson.h> // Pastikan ini disertakan untuk JSON handling
+#include <ArduinoJson.h> 
 #include <WiFiClientSecure.h>
 #include <dev_config.h>
 #include <string>
@@ -44,7 +44,7 @@ private:
 
     unsigned long startMillisLog = 0;
     unsigned long intervalShowLog = 0;
-    unsigned int dataIndex = 0; // index untuk tracking data yang sedang ditampilkan
+    unsigned int dataIndex = 0;
     bool showDataInProgress = false;
 
     String feedModeLog;
@@ -54,16 +54,16 @@ private:
     float rawDurasiFeedLog;
     float rawTotalPakanLog;
 
-    JsonArray array;         // Pastikan ini dideklarasikan di sini
-    WiFiClientSecure client; // Declaring WiFiClientSecure for HTTPS
+    JsonArray array;         
+    WiFiClientSecure client; 
 
     String schedule1;
     String schedule2;
     String schedule3;
-    float totalFeed;            // Total pakan yang harus dihabiskan dalam 3 kali penjadwalan (kg)
-    float feedRate;             // Pakan yang dapat dikeluarkan selama 1 menit (kg)
-    unsigned long feedDuration; // Durasi waktu untuk mengeluarkan pakan per jadwal (ms)
-    float calibrationValue;     // Nilai kalibrasi dari load cell
+    float totalFeed;
+    float feedRate;             
+    unsigned long feedDuration; 
+    float calibrationValue;     
 
     bool schedule1Active;
     bool schedule2Active;
@@ -86,10 +86,10 @@ private:
     float prevTotalFeed;
     float prevCalibration;
 
-    unsigned long lastDebounceTime = 0;     // Waktu terakhir tombol diproses
-    const unsigned long debounceDelay = 50; // Debounce delay dalam milidetik
-    unsigned long pressStartTime;           // Waktu saat tombol ditekan pertama kali
-    bool buttonPressed;                     // Status apakah tombol sedang ditekan
+    unsigned long lastDebounceTime = 0;    
+    const unsigned long debounceDelay = 50; 
+    unsigned long pressStartTime;           
+    bool buttonPressed;                     
 
     String GAS_ID = GAS;
     const char *host_googlesheet = host_gs;
@@ -99,12 +99,8 @@ private:
     void handleScheduleMessage(const String &message);
     void handleManualMessage(const String &message);
     void handleSetFeedMessage(const String &message);
-    // void handleCalibrationMessage(const String &message);
     void handleStartFeedLog(String mode);
     void handleStopFeedLog();
-    void showDat();
-    void deleteLog();
-
     void checkSchedule();
     bool isTimeToFeed(const String &schedule);
     void startFeeding();
