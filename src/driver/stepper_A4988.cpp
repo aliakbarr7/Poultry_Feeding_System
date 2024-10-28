@@ -57,10 +57,10 @@ void stepper_A4988::start()
         isRunning = true;
         if (clockwiseDirection)
         {
-            // rotateCounterClockwise();
+            rotateCounterClockwise();
 
             // Dummy Tes LED
-            digitalWrite(DIR_PIN, HIGH);
+            // digitalWrite(DIR_PIN, HIGH);
         }
     }
     else
@@ -74,22 +74,22 @@ void stepper_A4988::stop()
     if (isRunning)
     {
         isRunning = false;
-        // digitalWrite(STEP_PIN, LOW); // Matikan sinyal STEP
-        // Serial.println("Motor berhenti.");
+        digitalWrite(STEP_PIN, LOW); // Matikan sinyal STEP
+        Serial.println("Motor berhenti.");
 
-        // // Berhenti selama 1 detik
-        // delay(1500);
+        // Berhenti selama 1 detik
+        delay(1500);
 
-        // // Memutar berlawanan jarum jam selama 5 detik
-        // rotateClockwise();
+        // Memutar berlawanan jarum jam selama 5 detik
+        rotateClockwise();
 
-        // // Setelah 2 detik, motor berhenti total
-        // digitalWrite(STEP_PIN, LOW); // Matikan STEP pin
-        // digitalWrite(DIR_PIN, LOW);  // Matikan DIR pin
-        // Serial.println("Stepper berhenti total.");
+        // Setelah 2 detik, motor berhenti total
+        digitalWrite(STEP_PIN, LOW); // Matikan STEP pin
+        digitalWrite(DIR_PIN, LOW);  // Matikan DIR pin
+        Serial.println("Stepper berhenti total.");
 
         // Dummy Tes LED
-        digitalWrite(DIR_PIN, LOW);
+        // digitalWrite(DIR_PIN, LOW);
     }
     else
     {

@@ -15,6 +15,7 @@ public:
     bool init();
     bool checkStatus();
     bool WiFiConfig();
+    bool disconnect();
 
 private:
     WiFiManager wifiManager;

@@ -56,3 +56,19 @@ bool network_WiFi::WiFiConfig()
         return false;
     }
 }
+
+bool network_WiFi::disconnect()
+{
+    if (wifiWasConnected) // Hanya disconnect jika sebelumnya terhubung
+    {
+        Serial.println("Disconnecting from WiFi...");
+        WiFi.disconnect(); // Memutuskan koneksi WiFi
+        wifiWasConnected = false; // Mengubah status koneksi
+        return true; // Mengembalikan true jika disconnect berhasil
+    }
+    else
+    {
+        Serial.println("WiFi was not connected.");
+        return false; // Mengembalikan false jika tidak terhubung
+    }
+}

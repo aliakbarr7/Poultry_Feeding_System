@@ -30,10 +30,10 @@ const int LOADCELL_SCK_PIN = 19;
 // Inisialisasi Pin Stepper
 
 // Mode Debug menggunakan LED
-#define DIR 17
+// #define DIR 17
 
 // Menggunakan Stepper
-// #define DIR 26
+#define DIR 26
 #define STEP 25
 
 // Settingan Step Per Revolution pada Motor Stepper

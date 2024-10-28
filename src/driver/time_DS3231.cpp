@@ -2,6 +2,7 @@
 
 bool time_DS3231::init()
 {
+    // Inisialisasi RTC
     _rtc.begin();
 
     if (!_rtc.begin())
@@ -10,12 +11,19 @@ bool time_DS3231::init()
         return false;
     }
 
+    // Periksa apakah RTC kehilangan daya
     if (_rtc.lostPower())
     {
         Serial.println("RTC lost power, let's set the time!");
-        // Set RTC to the compile time or another default time
+        // Set RTC ke waktu kompilasi atau waktu default lainnya
         _rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
     }
+    
+    // Inisialisasi NTP
+    timeClient = NTPClient(ntpUDP);
+    timeClient.begin();
+    timeClient.setTimeOffset(utcOffsetInSeconds);
+
     return true;
 }
 
@@ -45,4 +53,25 @@ uint32_t time_DS3231::getHour()
 uint32_t time_DS3231::getMinute()
 {
     return _rtc.now().minute();
+}
+
+bool time_DS3231::setTimeFromNTP()
+{
+    if (!timeSet) // Hanya set waktu jika belum diatur
+    {
+        timeClient.update(); // Memperbarui waktu dari NTP
+        if (timeClient.getEpochTime() > 0) // Memastikan waktu yang valid
+        {
+            _rtc.adjust(DateTime(timeClient.getEpochTime())); // Atur RTC dengan waktu NTP
+            timeSet = true; // Tandai bahwa waktu telah diatur
+            Serial.println("RTC time set from NTP.");
+            return true;
+        }
+        else
+        {
+            Serial.println("Failed to get time from NTP.");
+            return false;
+        }
+    }
+    return false; // Waktu sudah diatur sebelumnya
 }

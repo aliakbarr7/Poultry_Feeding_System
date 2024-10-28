@@ -21,6 +21,18 @@ bool communication_mqtt::connect()
     }
 }
 
+bool communication_mqtt::connected()
+{
+    return client.connected();
+}
+
+bool communication_mqtt::disconnect()
+{
+    client.disconnect();
+    Serial.println("Disconnected from MQTT broker.");
+    return true;
+}
+
 bool communication_mqtt::publish(const char *topic, const char *payload)
 {
     return client.publish(topic, payload);
@@ -40,7 +52,7 @@ void communication_mqtt::setCallback(std::function<void(char *, uint8_t *, unsig
 {
     _callback = callback;
     client.setCallback([this](char *topic, uint8_t *payload, unsigned int length)
-                            {
+                       {
         if (_callback) {
             _callback(topic, payload, length);
         } });

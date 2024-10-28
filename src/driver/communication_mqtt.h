@@ -11,6 +11,8 @@ public:
     communication_mqtt(const char* server, const char* clientID, const char* user = nullptr, const char* pass = nullptr);
     bool init();
     bool connect();
+    bool connected();
+    bool disconnect();
     bool publish(const char* topic, const char* payload);
     bool subscribe(const char* topic);
     void loop();

@@ -1,6 +1,6 @@
 #pragma once
 #include <Arduino.h>
-#include <ArduinoJson.h> 
+#include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
 #include <dev_config.h>
 #include <string>
@@ -30,8 +30,9 @@ private:
     time_interface &_time;
 
     unsigned long lastSendDataTime;
-    const unsigned long sendDataInterval = 10000; // Interval untuk mengirim data loadcell (10 detik)
+    const unsigned long sendDataInterval = 2500; // Interval untuk mengirim data loadcell (10 detik)
     unsigned long feedingStartTime;
+    unsigned long lastMessagePublish;
 
     unsigned long calibrationStartTime;
     const unsigned long calibrationDuration = 10000; // Durasi kalibrasi dalam milidetik
@@ -53,17 +54,20 @@ private:
     String totalPakanLog;
     float rawDurasiFeedLog;
     float rawTotalPakanLog;
+    float loadCellData;
+    float loadCellStart = 0.0;
+    float loadCellEnd = 0.0;
 
-    JsonArray array;         
-    WiFiClientSecure client; 
+    JsonArray array;
+    WiFiClientSecure client;
 
     String schedule1;
     String schedule2;
     String schedule3;
     float totalFeed;
-    float feedRate;             
-    unsigned long feedDuration; 
-    float calibrationValue;     
+    float feedRate;
+    unsigned long feedDuration;
+    float calibrationValue;
 
     bool schedule1Active;
     bool schedule2Active;
@@ -86,14 +90,21 @@ private:
     float prevTotalFeed;
     float prevCalibration;
 
-    unsigned long lastDebounceTime = 0;    
-    const unsigned long debounceDelay = 50; 
-    unsigned long pressStartTime;           
-    bool buttonPressed;                     
+    unsigned long lastDebounceTime = 0;
+    const unsigned long debounceDelay = 50;
+    unsigned long pressStartTime;
+    bool buttonPressed;
 
     String GAS_ID = GAS;
     const char *host_googlesheet = host_gs;
     const int httpsPort_googlesheet = https_port_gs;
+
+    // MQTT connection check
+    unsigned long lastMQTTCheckTime = 0;
+    unsigned long lastMQTTConnectAttemptTime = 0;
+    const unsigned long mqttCheckInterval = 60000;     // Cek koneksi setiap 1 menit (60000 ms)
+    const unsigned long mqttMaxReconnectTime = 300000; // Batas waktu reconnect 5 menit (300000 ms)
+    bool mqttConnected = false;
 
     void callback(char *topic, byte *payload, unsigned int length);
     void handleScheduleMessage(const String &message);
@@ -117,4 +128,9 @@ private:
     void buttonConfig(int button_pin);
     bool sendDataToGoogle(const std::string &mode, const std::string &durasi, const std::string &totalPakan, const std::string &waktu);
     bool checkGoogleResponse(String response);
+
+    // MQTT connection functions
+    void checkMQTTConnection();
+    void resetMQTTConnection();
+    void subscribeMQTTTopics();
 };

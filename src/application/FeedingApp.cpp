@@ -15,7 +15,8 @@ FeedingApp::FeedingApp(network_interface &net, communication_interface &comm, di
       startMillisLog(0), intervalShowLog(0), dataIndex(0), showDataInProgress(false),
       feedModeLog(""), feedTimeLog(""), rawDurasiFeedLog(0.0), rawTotalPakanLog(0.0),
       durasiFeedLog("0"), totalPakanLog("0"),
-      pressStartTime(0), buttonPressed(false), lastDebounceTime(0), debounceDelay(50)
+      pressStartTime(0), buttonPressed(false), lastDebounceTime(0), debounceDelay(50),
+      lastMessagePublish(0), loadCellStart(0.0), loadCellEnd(0.0)
 {
     client.setInsecure();
 }
@@ -26,10 +27,9 @@ void FeedingApp::init()
     pinMode(button, INPUT_PULLUP);
     _disp.begin();
     _step.begin();
-    _time.init();
-
     _net.init();
     _comm.init();
+    _time.init();
 
     if (!_stg.init())
     {
@@ -44,26 +44,37 @@ void FeedingApp::init()
         _disp.showMessage("      WiFi     ", "   Connected!   ");
         Serial.println("WiFi initialized and connected!");
         delay(1000);
+
         if (_comm.init() && _comm.connect())
         {
+
+            // Mengatur waktu dari NTP
+            if (_time.setTimeFromNTP())
+            {
+                Serial.println("Time set from NTP.");
+                _disp.showMessage("Time", "Synchronized...");
+                delay(1000);
+            }
+            else
+            {
+                Serial.println("Failed to set time from NTP.");
+            }
+
             _disp.showMessage("Connected to....", "MQTT-Broker");
             delay(1000);
             Serial.println("Connected to MQTT-Broker");
-            _comm.subscribe(TOPIC_setSchedule);
-            _comm.subscribe(TOPIC_manual);
-            _comm.subscribe(TOPIC_setPakan);
-            _comm.subscribe(TOPIC_calibrate);
-            _comm.setCallback([this](char *topic, uint8_t *payload, unsigned int length)
-                              { this->callback(topic, payload, length); });
+            subscribeMQTTTopics();
+
+            client.setInsecure();
         }
-        else
+
+        if (_comm.init() && !_comm.connect())
         {
+
             wifiStatusDisplayed = false;
             Serial.println("Failed to connect to MQTT.");
             _disp.showMessage("      MQTT     ", " Not Connected! ");
         }
-
-        client.setInsecure();
     }
     else
     {
@@ -77,7 +88,7 @@ void FeedingApp::init()
     _disp.setSchedule1(schedule1.c_str());
     _disp.setSchedule2(schedule2.c_str());
     _disp.setSchedule3(schedule3.c_str());
-    _disp.setLoadValue(_sens.getLoad());
+    _disp.setLoadValue(_sens.getWeight());
     _disp.setDateTime(_time.getCurrentTime().c_str());
     _disp.setFeedStatus("Standby");
     _disp.setFeedPerDay(totalFeed);
@@ -91,7 +102,12 @@ void FeedingApp::loop()
     _comm.loop(); // Ensure MQTT loop is called regularly
     _disp.update();
 
-    _sens.getLoad();
+    loadCellData = _sens.getWeight();
+
+    if (loadCellData <= 0)
+    {
+        loadCellData = 0;
+    }
 
     bool wifiConnected = _net.checkStatus();
 
@@ -102,16 +118,11 @@ void FeedingApp::loop()
 
         if (_comm.init() && _comm.connect())
         {
+            delay(500);
             _disp.showMessage("Connected to....", "MQTT-Broker");
-            delay(1000);
+            delay(750);
             Serial.println("Connected to MQTT-Broker");
-            _comm.subscribe(TOPIC_setSchedule);
-            _comm.subscribe(TOPIC_manual);
-            _comm.subscribe(TOPIC_setPakan);
-            _comm.subscribe(TOPIC_calibrate);
-            _comm.setCallback([this](char *topic, uint8_t *payload, unsigned int length)
-                              { this->callback(topic, payload, length); });
-
+            subscribeMQTTTopics();
             loadLog();
         }
         else
@@ -136,17 +147,17 @@ void FeedingApp::loop()
         {
             lastSendDataTime = currentMillis;
 
-            // float loadcellData = _sens.getLoad();
-            float loadcellData = 4.9;
-
-            String payload = String(loadcellData);
+            String payload = String(loadCellData);
             _comm.publish(TOPIC_sendData, payload.c_str());
-            _disp.setLoadValue(loadcellData);
+            lastMessagePublish = millis();
+            _disp.setLoadValue(loadCellData);
 
             _disp.setDateTime(_time.getCurrentTime().c_str());
             Serial.println();
             Serial.println(_time.getCurrentTime());
             Serial.println("Feed Duration per Schedule: " + String(feedDuration / 1000) + " detik");
+            Serial.print("Berat: ");
+            Serial.println(loadCellData);
             Serial.println();
         }
 
@@ -172,6 +183,8 @@ void FeedingApp::loop()
     {
         loadLog();
     }
+
+    checkMQTTConnection();
 }
 
 void FeedingApp::callback(char *topic, byte *payload, unsigned int length)
@@ -252,7 +265,7 @@ void FeedingApp::handleScheduleMessage(const String &message)
             _disp.setSchedule2(schedule2.c_str());
             _disp.setSchedule3(schedule3.c_str());
 
-            String response = "*" + String(001) + "," + "Update Schedule Succes!" + "#";
+            String response = "Update Schedule Succes!";
             _comm.publish(TOPIC_response, response.c_str());
         }
     }
@@ -326,7 +339,7 @@ void FeedingApp::handleSetFeedMessage(const String &message)
             _disp.setFeedPerDay(totalFeed);
             _disp.showMessage("Memperbarui", "Sett Pakan/hari!");
 
-            String response = "*" + String(003) + "," + "Feed Settings Updated!" + "#";
+            String response = "Feed Settings Updated!";
             _comm.publish(TOPIC_response, response.c_str());
         }
     }
@@ -378,16 +391,20 @@ bool FeedingApp::isTimeToFeed(const String &schedule)
 
 void FeedingApp::startFeeding()
 {
-    // float loadcellData = _sens.getLoad();
-    float loadcellData = 4.9;
 
-    if (loadcellData <= 0.0)
+    if (loadCellData <= 0.0)
     {
         _disp.setFeedStatus("Pakan Kosong");
         _disp.showMessage("Fedeer", "Pakan Kosong");
-        String response = "*" + String(004) + "," + "Pakan Kosong/Habis!" + "#";
+        String response = "Feed is Empty!";
         _comm.publish(TOPIC_response, response.c_str());
         return;
+    }
+
+    if (_net.checkStatus() && _comm.connect())
+    {
+        String response = "Fedeer ON!";
+        _comm.publish(TOPIC_response, response.c_str());
     }
 
     _step.start();
@@ -400,6 +417,12 @@ void FeedingApp::startFeeding()
 
 void FeedingApp::stopFeeding()
 {
+    if (_net.checkStatus() && _comm.connect())
+    {
+        String response = "Fedeer OFF!";
+        _comm.publish(TOPIC_response, response.c_str());
+    }
+
     _step.stop();
     isFeeding = false;
     _disp.setFeedStatus("Standby");
@@ -471,8 +494,7 @@ void FeedingApp::loadConfig()
     Serial.println("Schedule 3: " + schedule3);
     Serial.print("Total Feed: ");
     Serial.println(totalFeed, 2);
-    Serial.print("Calibration Value: ");
-    Serial.println(calibrationValue, 2);
+    Serial.println();
 }
 
 bool FeedingApp::hasConfigChanged()
@@ -619,13 +641,21 @@ void FeedingApp::handleStartFeedLog(String mode)
     feedModeLog = mode;
     feedTimeLog = _time.getCurrentTime();
     startMillisLog = millis();
+
+    // Membaca load cell saat mulai pemberian pakan
+    loadCellStart = loadCellData;
+    Serial.println("Load Cell Start: " + String(loadCellStart, 2));
 }
 
 void FeedingApp::handleStopFeedLog()
 {
     unsigned long stopMillisLog = millis();
     rawDurasiFeedLog = (stopMillisLog - startMillisLog) / 60000.0;
-    rawTotalPakanLog = rawDurasiFeedLog * feedRate;
+
+    loadCellEnd = loadCellData;
+    Serial.println("Load Cell End: " + String(loadCellEnd, 2));
+
+    rawTotalPakanLog = loadCellStart - loadCellEnd;
 
     durasiFeedLog = String(rawDurasiFeedLog, 2);
     totalPakanLog = String(rawTotalPakanLog, 2);
@@ -763,4 +793,83 @@ void FeedingApp::buttonConfig(int button_pin)
 
         buttonPressed = false; // Reset status tombol setelah dilepas
     }
+}
+
+void FeedingApp::checkMQTTConnection()
+{
+    unsigned long currentMillis = millis();
+
+    // Cek koneksi MQTT setiap 1 menit
+    if (currentMillis - lastMQTTCheckTime >= mqttCheckInterval)
+    {
+        lastMQTTCheckTime = currentMillis;
+
+        if (_comm.connected()) // Jika terhubung ke MQTT
+        {
+            Serial.println("MQTT connected.");
+            mqttConnected = true;
+            lastMQTTConnectAttemptTime = currentMillis; // Reset waktu terakhir koneksi berhasil
+            // Periksa apakah ada timeout pada pesan
+            if (millis() - lastMessagePublish >= 30000)
+            {
+                Serial.println("Message timeout: resetting MQTT connection...");
+                resetMQTTConnection();
+            }
+        }
+        else
+        {
+            Serial.println("MQTT not connected.");
+            mqttConnected = false;
+
+            // Jika tidak terhubung selama lebih dari 5 menit, lakukan reset
+            if (currentMillis - lastMQTTConnectAttemptTime >= mqttMaxReconnectTime)
+            {
+                Serial.println("MQTT connection failed for 5 minutes. Resetting connection...");
+                resetMQTTConnection();
+                lastMQTTConnectAttemptTime = currentMillis; // Reset waktu setelah reset
+            }
+            else
+            {
+                // Coba hubungkan kembali ke MQTT
+                Serial.println("Attempting to reconnect to MQTT...");
+                if (_comm.connect())
+                {
+                    Serial.println("Reconnected to MQTT.");
+                    _disp.showMessage("Reconnected", "to MQTT...");
+                    subscribeMQTTTopics(); // Subscribe kembali ke topik
+                }
+                else
+                {
+                    Serial.println("Failed to reconnect to MQTT.");
+                }
+            }
+        }
+    }
+}
+
+void FeedingApp::resetMQTTConnection()
+{
+    Serial.println("Resetting MQTT connection...");
+    _comm.disconnect();  // Disconnect MQTT
+    delay(1000);         // Tunggu sebentar sebelum mencoba kembali
+    if (_comm.connect()) // Coba sambungkan ulang ke broker MQTT
+    {
+        Serial.println("Reconnected to MQTT after reset.");
+        subscribeMQTTTopics(); // Subscribe kembali ke topik yang diperlukan
+    }
+    else
+    {
+        Serial.println("Failed to reconnect to MQTT after reset.");
+    }
+}
+
+void FeedingApp::subscribeMQTTTopics()
+{
+    _comm.subscribe(TOPIC_setSchedule);
+    _comm.subscribe(TOPIC_manual);
+    _comm.subscribe(TOPIC_setPakan);
+    _comm.subscribe(TOPIC_calibrate);
+    _comm.setCallback([this](char *topic, uint8_t *payload, unsigned int length)
+                      { this->callback(topic, payload, length); });
+    Serial.println("Subscribed to necessary MQTT topics.");
 }
