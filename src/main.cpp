@@ -20,12 +20,12 @@ stepper_A4988 stepper(DIR, STEP, SPR, RPM);
 time_DS3231 timeHandler;
 FeedingApp feedingApp(network, comm_mqtt, display, loadcell, stepper, storage, timeHandler);
 
-void appTask(void *pvParameters);
+void stepperTask(void *pvParameters);
 
 void setup()
 {
     feedingApp.init();
-    xTaskCreate(appTask, "Application Task", 2048, NULL, 1, NULL);
+    xTaskCreate(stepperTask, "Stepper Task", 2048, NULL, 1, NULL);
 }
 
 void loop()
@@ -35,7 +35,7 @@ void loop()
 }
 
 
-void appTask(void *pvParameters)
+void stepperTask(void *pvParameters)
 {
     while (1)
     {

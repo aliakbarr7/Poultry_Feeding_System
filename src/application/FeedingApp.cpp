@@ -235,6 +235,33 @@ void FeedingApp::stopCalibration()
     isCalibrating = false;
 }
 
+void FeedingApp::updateFirmware()
+{
+
+    _disp.showMessage("     Update     ", "    Started!    ");
+    String response = "Update Firmware Started!";
+    _comm.publish(TOPIC_response, response.c_str());
+    bool result = ota.update(OTA_SERVER, OTA_PORT, (String) "/update/firmware?id=" + (String)DEVICE_ID, false);
+
+    if (result)
+    {
+        _disp.showMessage("     Update     ", "    Success!    ");
+        String response = "Update Succes!";
+        _comm.publish(TOPIC_response, response.c_str());
+        delay(1000);
+        ESP.restart();
+    }
+
+    else
+    {
+        _disp.showMessage("     Update     ", "     Failed!    ");
+        String response = "Update Failed!";
+        _comm.publish(TOPIC_response, response.c_str());
+        delay(1000);
+        ESP.restart();
+    }
+}
+
 void FeedingApp::handleScheduleMessage(const String &message)
 {
     if (message.startsWith("*") && message.endsWith("#"))
@@ -772,7 +799,6 @@ void FeedingApp::buttonConfig(int button_pin)
         // Jika tombol ditekan kurang dari 5 detik
         if (pressDuration < 3000)
         {
-            Serial.println("WiFi setup dimulai.");
             _disp.setAPConfig();
             _net.WiFiConfig();
 
@@ -785,10 +811,16 @@ void FeedingApp::buttonConfig(int button_pin)
                 _disp.showMessage("      WiFi     ", " Not Connected! ");
             }
         }
-        // Jika tombol ditekan lebih dari 5 detik
-        else if (pressDuration >= 3000)
+        // Jika tombol ditekan lebih dari 5 detik dan kurang dari sama dengan 10 detik
+        else if (pressDuration >= 5000 && pressDuration <= 10000)
         {
             startCalibration();
+        }
+
+        // Jika tombol ditekan lebih dari 10 detik
+        else if (pressDuration > 10000)
+        {
+            updateFirmware();
         }
 
         buttonPressed = false; // Reset status tombol setelah dilepas
@@ -868,7 +900,6 @@ void FeedingApp::subscribeMQTTTopics()
     _comm.subscribe(TOPIC_setSchedule);
     _comm.subscribe(TOPIC_manual);
     _comm.subscribe(TOPIC_setPakan);
-    _comm.subscribe(TOPIC_calibrate);
     _comm.setCallback([this](char *topic, uint8_t *payload, unsigned int length)
                       { this->callback(topic, payload, length); });
     Serial.println("Subscribed to necessary MQTT topics.");

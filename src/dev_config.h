@@ -5,14 +5,19 @@
 #define AP_WIFI "Chicken-Feeder"
 #define AP_PASSWORD "admin1234"
 
+// OTA Connection
+#define DEVICE_ID "CF1"
+#define OTA_PORT 443
+#define OTA_SERVER "angkasatimelapse.com"
+
 // MQTT Connection
 #define MQTT_SERVER "angkasatimelapse.com"
 #define MQTT_CLIENTID "Poultry Feeding System"
+
 // MQTT Topic
 #define TOPIC_setSchedule "feeder/setschedule"
 #define TOPIC_setPakan "feeder/setpakan"
 #define TOPIC_sendData "feeder/sendData"
-#define TOPIC_calibrate "feeder/calibrate"
 #define TOPIC_manual "feeder/manual"
 #define TOPIC_response "fedeer/response"
 

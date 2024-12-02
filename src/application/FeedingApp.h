@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
 #include <dev_config.h>
+#include <OverTheAir\OverTheAir.h>
 #include <string>
 #include <interfaces/communication_interface.h>
 #include <interfaces/display_interface.h>
@@ -28,6 +29,7 @@ private:
     stepper_interface &_step;
     storage_interface &_stg;
     time_interface &_time;
+    OverTheAir ota;
 
     unsigned long lastSendDataTime;
     const unsigned long sendDataInterval = 2500; // Interval untuk mengirim data loadcell (10 detik)
@@ -107,6 +109,7 @@ private:
     bool mqttConnected = false;
 
     void callback(char *topic, byte *payload, unsigned int length);
+    void updateFirmware();
     void handleScheduleMessage(const String &message);
     void handleManualMessage(const String &message);
     void handleSetFeedMessage(const String &message);
