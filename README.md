@@ -18,6 +18,6 @@
 
 
 ## Flowchart Sistem
-![Flowchart](https://github.com/makerdotindo/EWS-PublicV2.0-Firmware-Nano/blob/main/diagram/Arsitektur%20Komunikasi%20Public.png)
+![Flowchart](https://github.com/aliakbarr7/Poultry_Feeding_System/blob/dev/debug/diagram/FlowChartCF1.png)
 
 
